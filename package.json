@@ -1,0 +1,35 @@
+{
+  "name": "memo-db-client",
+  "version": "1.0.0",
+  "description": "client for memo-db(in-memory key-value database)",
+  "keywords": [
+    "client",
+    "database",
+    "typescript"
+  ],
+  "homepage": "https://github.com/galelo04/memo-db-client#readme",
+  "bugs": {
+    "url": "https://github.com/galelo04/memo-db-client/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/galelo04/memo-db-client.git"
+  },
+  "license": "ISC",
+  "author": "Mostafa Ahmed",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "build": "tsup"
+  },
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "devDependencies": {
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}
