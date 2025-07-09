@@ -7,4 +7,6 @@ export default defineConfig({
   splitting: false,
   sourcemap: true,
   clean: true,
+  external: ['readline/promises'],
+  target: 'node18'
 });

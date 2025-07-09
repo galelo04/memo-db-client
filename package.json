@@ -21,7 +21,9 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
-    "build": "tsup"
+    "build": "tsup",
+    "dev": "node ./dist/index.js",
+    "clean": "rm -rf dist"
   },
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -30,6 +32,11 @@
   ],
   "devDependencies": {
     "ts-node": "^10.9.2",
+    "tsup": "^8.5.0",
     "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@types/minimist": "^1.2.5",
+    "minimist": "^1.2.8"
   }
 }
