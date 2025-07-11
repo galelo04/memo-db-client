@@ -25,29 +25,10 @@ function processBuffer(buffer: Buffer) {
 }
 export function createClient(servertype?: ServerType) {
   let connectionClient: Socket;
-  if (!servertype || servertype === 'memo:master')
-    connectionClient = net.createConnection({ port: 6379 });
-  else
-    connectionClient = net.createConnection({ port: 6380 });
 
   const pendingResolvers: ((data: any) => void)[] = [];
 
   let buffer = Buffer.alloc(0);
-  connectionClient.on('data', (data) => {
-    buffer = Buffer.concat([buffer, data])
-    const processBufferResult = processBuffer(buffer);
-    buffer = processBufferResult.remainingBuffer;
-    for (const parsingResult of processBufferResult.parsingResults) {
-      const resolver = pendingResolvers.shift();
-      if (resolver) {
-        if (typeof parsingResult.parsedResponse === 'string' && parsingResult.parsedResponse.startsWith('ERR')) {
-          resolver(Promise.reject(new Error(parsingResult.parsedResponse)));
-        } else {
-          resolver(parsingResult.parsedResponse);
-        }
-      }
-    }
-  });
   async function sendCommand(args: string[]): Promise<any> {
     return new Promise((resolve, reject) => {
       const encodedCommand = encodeCommand(args);
@@ -80,6 +61,32 @@ export function createClient(servertype?: ServerType) {
   function ping() {
     const command = ['PING']
     return sendCommand(command)
+  }
+  function connect() {
+
+    if (!servertype || servertype === 'memo:master')
+      connectionClient = net.createConnection({ port: 6379 });
+    else
+      connectionClient = net.createConnection({ port: 6380 });
+
+    connectionClient.on('data', (data) => {
+      buffer = Buffer.concat([buffer, data])
+      const processBufferResult = processBuffer(buffer);
+      buffer = processBufferResult.remainingBuffer;
+      for (const parsingResult of processBufferResult.parsingResults) {
+        const resolver = pendingResolvers.shift();
+        if (resolver) {
+          if (typeof parsingResult.parsedResponse === 'string' && parsingResult.parsedResponse.startsWith('ERR')) {
+            resolver(Promise.reject(new Error(parsingResult.parsedResponse)));
+          } else {
+            resolver(parsingResult.parsedResponse);
+          }
+        }
+      }
+    });
+  }
+  function quit() {
+    connectionClient.end()
   }
   function multi() {
     const commandsQueue: string[][] = [];
@@ -125,6 +132,6 @@ export function createClient(servertype?: ServerType) {
     return multiApi;
   }
 
-  return { set, get, del, expire, info, ping, multi, sendCommand }
+  return { connect, quit, set, get, del, expire, info, ping, multi, sendCommand }
 }
 

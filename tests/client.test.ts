@@ -6,6 +6,7 @@ import assert from 'node:assert/strict'
 
 describe('init testing', () => {
   const client = createClient()
+  client.connect()
   describe('testing set and get', () => {
     it('set() should return OK', async () => {
       const setData = await client.set('hello', 'testing')
