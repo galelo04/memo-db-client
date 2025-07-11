@@ -123,18 +123,27 @@ export function createClient(clientConnectionInfo?: ClientConnectionInfo) {
       });
 
       connectionClient.on('data', (data: Buffer) => {
-        buffer = Buffer.concat([buffer, data])
-        const processBufferResult = processBuffer(buffer);
-        buffer = processBufferResult.remainingBuffer;
-        for (const parsingResult of processBufferResult.parsingResults) {
-          const resolver = pendingResolvers.shift();
-          if (resolver) {
-            if (typeof parsingResult.parsedResponse === 'string' && parsingResult.parsedResponse.startsWith('ERR')) {
-              resolver(Promise.reject(new Error(parsingResult.parsedResponse)));
-            } else {
-              resolver(parsingResult.parsedResponse);
+        try {
+          buffer = Buffer.concat([buffer, data])
+          const processBufferResult = processBuffer(buffer);
+          buffer = processBufferResult.remainingBuffer;
+
+          for (const parsingResult of processBufferResult.parsingResults) {
+            const resolver = pendingResolvers.shift();
+
+            if (resolver) {
+              if (parsingResult.error) {
+                resolver(Promise.reject(new Error(parsingResult.error)))
+              }
+              else if (typeof parsingResult.parsedResponse === 'string' && parsingResult.parsedResponse.startsWith('ERR')) {
+                resolver(Promise.reject(new Error(parsingResult.parsedResponse)));
+              } else {
+                resolver(parsingResult.parsedResponse);
+              }
             }
           }
+        } catch (error) {
+          console.error('Error processing data:', error)
         }
       });
 
