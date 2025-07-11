@@ -1,10 +1,27 @@
 import net, { Socket } from 'net'
 import { encodeCommand } from '../utilis/commandEncoding.js';
+import { tryParse } from '../utilis/parseResponse.js'
+import type { ParsingResult } from '../utilis/parseResponse.js';
 export type ServerType = 'memo:master' | 'memo:replica'
 function processBuffer(buffer: Buffer) {
+  let parsingResults: ParsingResult[] = []
+  let currentBuffer: Buffer = buffer;
   while (true) {
-    //TODO
+    if (currentBuffer.length <= 0) {
+      break;
+    }
+    const parsingResult = tryParse(currentBuffer);
+    currentBuffer = parsingResult.remainingBuffer;
+    parsingResults.push(parsingResult)
+    if (parsingResult.error) {
+      currentBuffer = Buffer.alloc(0)
+      break;
+    }
+    if (!parsingResult.parsedResponse) {
+      break;
+    }
   }
+  return { remainingBuffer: currentBuffer, parsingResults }
 }
 export function createClient(servertype?: ServerType) {
   let connectionClient: Socket;
@@ -13,18 +30,25 @@ export function createClient(servertype?: ServerType) {
   else
     connectionClient = net.createConnection({ port: 6380 });
 
-  const pendingResolvers: ((data: string) => void)[] = [];
+  const pendingResolvers: ((data: any) => void)[] = [];
 
   let buffer = Buffer.alloc(0);
   connectionClient.on('data', (data) => {
     buffer = Buffer.concat([buffer, data])
-    const res = data.toString().trim();
-    const resolver = pendingResolvers.shift();
-    if (resolver) {
-      resolver(res);
+    const processBufferResult = processBuffer(buffer);
+    buffer = processBufferResult.remainingBuffer;
+    for (const parsingResult of processBufferResult.parsingResults) {
+      const resolver = pendingResolvers.shift();
+      if (resolver) {
+        if (typeof parsingResult.parsedResponse === 'string' && parsingResult.parsedResponse.startsWith('ERR')) {
+          resolver(Promise.reject(new Error(parsingResult.parsedResponse)));
+        } else {
+          resolver(parsingResult.parsedResponse);
+        }
+      }
     }
   });
-  async function sendCommand(args: string[]): Promise<string> {
+  async function sendCommand(args: string[]): Promise<any> {
     return new Promise((resolve, reject) => {
       const encodedCommand = encodeCommand(args);
       connectionClient.write(encodedCommand);
@@ -59,7 +83,6 @@ export function createClient(servertype?: ServerType) {
   }
   function multi() {
     const commandsQueue: string[][] = [];
-    commandsQueue.push(['MULTI'])
     const multiApi = {
 
       set(key: string, value: string) {
@@ -88,12 +111,14 @@ export function createClient(servertype?: ServerType) {
         return multiApi
       },
       async exec() {
+        sendCommand(['MULTI'])
         for (const command of commandsQueue) {
           await sendCommand(command)
         }
         return sendCommand(['EXEC'])
       },
       discard() {
+        sendCommand(['MULTI'])
         return sendCommand(['DISCARD'])
       }
     }
