@@ -44,11 +44,19 @@ export function createClient(clientConnectionInfo?: ClientConnectionInfo) {
 
   let buffer: Buffer = Buffer.alloc(0);
 
-
+  function validateConnection() {
+    if (!connectionClient || connectionState !== "CONNECTED") {
+      throw new Error('Client is not connected. Call connect() first.');
+    }
+  }
 
   async function sendCommand(args: string[], timeout: number = 5000): Promise<any> {
     return new Promise((resolve, reject) => {
-
+      try {
+        validateConnection()
+      } catch (error) {
+        return reject(error)
+      }
       const encodedCommand = encodeCommand(args);
 
       const timeoutId = setTimeout(() => {
@@ -202,7 +210,6 @@ export function createClient(clientConnectionInfo?: ClientConnectionInfo) {
           }
           return await sendCommand(['EXEC']);
         } catch (error) {
-          // Auto-discard on error
           await sendCommand(['DISCARD']);
           throw error;
         }
