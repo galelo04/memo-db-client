@@ -195,11 +195,17 @@ export function createClient(clientConnectionInfo?: ClientConnectionInfo) {
         return multiApi
       },
       async exec() {
-        sendCommand(['MULTI'])
-        for (const command of commandsQueue) {
-          await sendCommand(command)
+        await sendCommand(['MULTI']);
+        try {
+          for (const command of commandsQueue) {
+            await sendCommand(command);
+          }
+          return await sendCommand(['EXEC']);
+        } catch (error) {
+          // Auto-discard on error
+          await sendCommand(['DISCARD']);
+          throw error;
         }
-        return sendCommand(['EXEC'])
       },
       discard() {
         sendCommand(['MULTI'])
