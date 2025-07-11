@@ -4,6 +4,12 @@ import { tryParse } from '../utilis/parseResponse.js'
 import type { ParsingResult } from '../utilis/parseResponse.js';
 export type ServerType = 'memo:master' | 'memo:replica'
 import { Buffer } from 'buffer'
+import { URL } from 'url';
+interface ClientConnectionInfo {
+  url?: string,
+  port?: number,
+  host?: string,
+}
 function processBuffer(buffer: Buffer) {
   let parsingResults: ParsingResult[] = []
   let currentBuffer: Buffer = buffer;
@@ -24,7 +30,7 @@ function processBuffer(buffer: Buffer) {
   }
   return { remainingBuffer: currentBuffer, parsingResults }
 }
-export function createClient(servertype?: ServerType) {
+export function createClient(clientConnectionInfo: ClientConnectionInfo) {
   let connectionClient: Socket;
 
   const pendingResolvers: ((data: any) => void)[] = [];
@@ -64,11 +70,22 @@ export function createClient(servertype?: ServerType) {
     return sendCommand(command)
   }
   function connect() {
+    let port = 6379;
+    let hostname = 'localhost'
+    if (clientConnectionInfo.url) {
+      const url = new URL(clientConnectionInfo.url)
+      if (url.port)
+        port = port
+      if (url.hostname)
+        hostname = url.hostname;
+    } else {
+      if (clientConnectionInfo.port)
+        port = clientConnectionInfo.port;
+      if (clientConnectionInfo.host)
+        hostname = clientConnectionInfo.host
+    }
 
-    if (!servertype || servertype === 'memo:master')
-      connectionClient = net.createConnection({ port: 6379 });
-    else
-      connectionClient = net.createConnection({ port: 6380 });
+    connectionClient = net.createConnection({ port, host: hostname });
 
     connectionClient.on('data', (data: Buffer) => {
       buffer = Buffer.concat([buffer, data])
