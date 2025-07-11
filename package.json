@@ -20,7 +20,7 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "test": "jest",
+    "test": "npm run build && node --test ./dist/tests/*.test.js",
     "build": "tsc",
     "dev": "node ./dist/src/index.js",
     "prod": "node ./dist/index.js",
