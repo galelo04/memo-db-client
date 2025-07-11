@@ -7,6 +7,10 @@ import { Buffer } from 'buffer'
 import { URL } from 'url';
 
 
+type ConnectinState = "DISCONNECTED" |
+  "CONNECTING" |
+  "CONNECTED" |
+  "CLOSED"
 interface ClientConnectionInfo {
   url?: string,
   port?: number,
@@ -34,6 +38,7 @@ function processBuffer(buffer: Buffer) {
 }
 export function createClient(clientConnectionInfo?: ClientConnectionInfo) {
   let connectionClient: Socket;
+  let connectionState: ConnectinState = 'DISCONNECTED'
 
   const pendingResolvers: ((data: any) => void)[] = [];
 
@@ -71,7 +76,7 @@ export function createClient(clientConnectionInfo?: ClientConnectionInfo) {
     const command = ['PING']
     return sendCommand(command)
   }
-  function connect() {
+  function connect(): Promise<void> {
     let port = 6379;
     let hostname = 'localhost'
     if (clientConnectionInfo) {
@@ -90,34 +95,49 @@ export function createClient(clientConnectionInfo?: ClientConnectionInfo) {
     }
 
     connectionClient = net.createConnection({ port, host: hostname });
+    return new Promise((resolve, reject) => {
+      if (connectionState === "CONNECTED") {
+        resolve();
+        return;
+      }
 
-    connectionClient.on('data', (data: Buffer) => {
-      buffer = Buffer.concat([buffer, data])
-      const processBufferResult = processBuffer(buffer);
-      buffer = processBufferResult.remainingBuffer;
-      for (const parsingResult of processBufferResult.parsingResults) {
-        const resolver = pendingResolvers.shift();
-        if (resolver) {
-          if (typeof parsingResult.parsedResponse === 'string' && parsingResult.parsedResponse.startsWith('ERR')) {
-            resolver(Promise.reject(new Error(parsingResult.parsedResponse)));
-          } else {
-            resolver(parsingResult.parsedResponse);
+      connectionState = "CONNECTING";
+
+      connectionClient.on('connect', () => {
+        connectionState = "CONNECTED";
+        resolve();
+      });
+
+      connectionClient.on('data', (data: Buffer) => {
+        buffer = Buffer.concat([buffer, data])
+        const processBufferResult = processBuffer(buffer);
+        buffer = processBufferResult.remainingBuffer;
+        for (const parsingResult of processBufferResult.parsingResults) {
+          const resolver = pendingResolvers.shift();
+          if (resolver) {
+            if (typeof parsingResult.parsedResponse === 'string' && parsingResult.parsedResponse.startsWith('ERR')) {
+              resolver(Promise.reject(new Error(parsingResult.parsedResponse)));
+            } else {
+              resolver(parsingResult.parsedResponse);
+            }
           }
         }
-      }
-    });
+      });
 
-    connectionClient.on('error', (error) => {
-      console.error('Connection Error: ', error);
-      pendingResolvers.forEach((resolver) => {
-        resolver(Promise.reject(error))
+      connectionClient.on('error', (error) => {
+        connectionState = "DISCONNECTED";
+        console.error('Connection Error: ', error);
+        pendingResolvers.forEach((resolver) => {
+          resolver(Promise.reject(error))
+        })
+        pendingResolvers.length = 0;
       })
-      pendingResolvers.length = 0;
-    })
 
-    connectionClient.on('close', () => {
-      console.log('Connection closed');
+      connectionClient.on('close', () => {
+        console.log('Connection closed');
+      });
     });
+
   }
   function quit() {
     connectionClient.end()
