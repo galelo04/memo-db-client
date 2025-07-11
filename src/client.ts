@@ -3,6 +3,7 @@ import { encodeCommand } from '../utilis/commandEncoding.js';
 import { tryParse } from '../utilis/parseResponse.js'
 import type { ParsingResult } from '../utilis/parseResponse.js';
 export type ServerType = 'memo:master' | 'memo:replica'
+import { Buffer } from 'buffer'
 function processBuffer(buffer: Buffer) {
   let parsingResults: ParsingResult[] = []
   let currentBuffer: Buffer = buffer;
@@ -28,7 +29,7 @@ export function createClient(servertype?: ServerType) {
 
   const pendingResolvers: ((data: any) => void)[] = [];
 
-  let buffer = Buffer.alloc(0);
+  let buffer: Buffer = Buffer.alloc(0);
   async function sendCommand(args: string[]): Promise<any> {
     return new Promise((resolve, reject) => {
       const encodedCommand = encodeCommand(args);
@@ -69,7 +70,7 @@ export function createClient(servertype?: ServerType) {
     else
       connectionClient = net.createConnection({ port: 6380 });
 
-    connectionClient.on('data', (data) => {
+    connectionClient.on('data', (data: Buffer) => {
       buffer = Buffer.concat([buffer, data])
       const processBufferResult = processBuffer(buffer);
       buffer = processBufferResult.remainingBuffer;

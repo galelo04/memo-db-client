@@ -1,9 +1,10 @@
+import { Buffer } from 'node:buffer';
 const supportedTypes = new Set(['*', '%', '$', '_', '-', '+', ':']);
 function isSupportedType(type: string) {
   return supportedTypes.has(type)
 }
 export interface ParsingResult {
-  remainingBuffer: Buffer,
+  remainingBuffer: Buffer
   error?: string,
   parsedResponse?: any
 }
