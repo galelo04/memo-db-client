@@ -30,7 +30,7 @@ function processBuffer(buffer: Buffer) {
   }
   return { remainingBuffer: currentBuffer, parsingResults }
 }
-export function createClient(clientConnectionInfo: ClientConnectionInfo) {
+export function createClient(clientConnectionInfo?: ClientConnectionInfo) {
   let connectionClient: Socket;
 
   const pendingResolvers: ((data: any) => void)[] = [];
@@ -72,17 +72,19 @@ export function createClient(clientConnectionInfo: ClientConnectionInfo) {
   function connect() {
     let port = 6379;
     let hostname = 'localhost'
-    if (clientConnectionInfo.url) {
-      const url = new URL(clientConnectionInfo.url)
-      if (url.port)
-        port = port
-      if (url.hostname)
-        hostname = url.hostname;
-    } else {
-      if (clientConnectionInfo.port)
-        port = clientConnectionInfo.port;
-      if (clientConnectionInfo.host)
-        hostname = clientConnectionInfo.host
+    if (clientConnectionInfo) {
+      if (clientConnectionInfo.url) {
+        const url = new URL(clientConnectionInfo.url)
+        if (url.port)
+          port = parseInt(url.port)
+        if (url.hostname)
+          hostname = url.hostname;
+      } else {
+        if (clientConnectionInfo.port)
+          port = clientConnectionInfo.port;
+        if (clientConnectionInfo.host)
+          hostname = clientConnectionInfo.host
+      }
     }
 
     connectionClient = net.createConnection({ port, host: hostname });
@@ -152,4 +154,3 @@ export function createClient(clientConnectionInfo: ClientConnectionInfo) {
 
   return { connect, quit, set, get, del, expire, info, ping, multi, sendCommand }
 }
-
