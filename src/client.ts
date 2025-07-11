@@ -43,11 +43,25 @@ export function createClient(clientConnectionInfo?: ClientConnectionInfo) {
   const pendingResolvers: ((data: any) => void)[] = [];
 
   let buffer: Buffer = Buffer.alloc(0);
-  async function sendCommand(args: string[]): Promise<any> {
+
+
+
+  async function sendCommand(args: string[], timeout: number = 5000): Promise<any> {
     return new Promise((resolve, reject) => {
+
       const encodedCommand = encodeCommand(args);
+
+      const timeoutId = setTimeout(() => {
+        reject(new Error('Command timeout'))
+      }, timeout)
+
+      const wrappedResolve = (data: any) => {
+        clearTimeout(timeoutId)
+        resolve(data)
+      }
+
       connectionClient.write(encodedCommand);
-      pendingResolvers.push(resolve);
+      pendingResolvers.push(wrappedResolve);
     })
   }
 
