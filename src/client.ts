@@ -5,6 +5,8 @@ import type { ParsingResult } from '../utilis/parseResponse.js';
 export type ServerType = 'memo:master' | 'memo:replica'
 import { Buffer } from 'buffer'
 import { URL } from 'url';
+
+
 interface ClientConnectionInfo {
   url?: string,
   port?: number,
@@ -103,6 +105,18 @@ export function createClient(clientConnectionInfo?: ClientConnectionInfo) {
           }
         }
       }
+    });
+
+    connectionClient.on('error', (error) => {
+      console.error('Connection Error: ', error);
+      pendingResolvers.forEach((resolver) => {
+        resolver(Promise.reject(error))
+      })
+      pendingResolvers.length = 0;
+    })
+
+    connectionClient.on('close', () => {
+      console.log('Connection closed');
     });
   }
   function quit() {
