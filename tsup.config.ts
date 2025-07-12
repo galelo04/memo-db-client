@@ -7,6 +7,8 @@ export default defineConfig({
   splitting: false,
   sourcemap: true,
   clean: true,
-  external: ['readline/promises'],
-  target: 'node18'
+  target: 'node18',
+  outExtension: ({ format }) => ({
+    'js': format === 'esm' ? '.mjs' : '.cjs',
+  })
 });
