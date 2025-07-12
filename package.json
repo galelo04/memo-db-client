@@ -1,6 +1,6 @@
 {
   "name": "memo-db-client",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "client for memo-db(in-memory key-value database)",
   "keywords": [
     "client",
